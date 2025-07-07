@@ -3,8 +3,15 @@ import '../models/product.dart';
 import '../models/purchase_item.dart';
 import '../models/transaction.dart';
 import '../data/mock_products.dart';
+import '../services/api_service.dart';
 
 class PosProvider extends ChangeNotifier {
+  // API サービス
+  final ApiService _apiService = ApiService();
+  
+  // API使用フラグ（true: API使用, false: モックデータ使用）
+  bool _useApi = false;
+  
   // 商品検索関連
   String _productCode = '';
   Product? _currentProduct;
@@ -18,6 +25,7 @@ class PosProvider extends ChangeNotifier {
   bool _isPurchasing = false;
   String? _purchaseErrorMessage;
   String? _purchaseSuccessMessage;
+  bool _showTaxModal = false;
 
   // ローディング・エラー状態
   bool _isLoading = false;
@@ -40,6 +48,10 @@ class PosProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get hasError => _errorMessage != null;
+  
+  bool get useApi => _useApi;
+  String get apiBaseUrl => _apiService.baseUrl;
+  bool get showTaxModal => _showTaxModal;
 
   // 商品コード設定
   void setProductCode(String code) {
@@ -48,7 +60,7 @@ class PosProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 商品検索（モックデータを使用）
+  // 商品検索（API または モックデータを使用）
   Future<void> searchProduct(String code) async {
     if (code.isEmpty) {
       _setSearchError('商品コードを入力してください');
@@ -59,17 +71,24 @@ class PosProvider extends ChangeNotifier {
     _clearSearchError();
     
     try {
-      // 模擬的な遅延を追加
-      await Future.delayed(const Duration(milliseconds: 500));
+      Product? product;
       
-      // モックデータから商品を検索
-      final product = MockProducts.findByCode(code);
+      if (_useApi) {
+        // API経由で商品を検索
+        product = await _apiService.searchProduct(code);
+      } else {
+        // モックデータから商品を検索
+        await Future.delayed(const Duration(milliseconds: 500)); // 模擬的な遅延
+        product = MockProducts.findByCode(code);
+      }
       
       if (product != null) {
         _setCurrentProduct(product);
       } else {
         _setSearchError('商品がマスタ未登録です');
       }
+    } on ApiException catch (e) {
+      _setSearchError(e.message);
     } catch (e) {
       _setSearchError('商品検索でエラーが発生しました: ${e.toString()}');
     } finally {
@@ -113,7 +132,23 @@ class PosProvider extends ChangeNotifier {
     }
   }
 
-  // 購入処理（将来的にAPIに接続）
+  // 税金表示モーダルを開く
+  void showTaxModalDialog() {
+    if (_purchaseList.isEmpty) {
+      _setPurchaseError('購入する商品がありません');
+      return;
+    }
+    _showTaxModal = true;
+    notifyListeners();
+  }
+  
+  // 税金表示モーダルを閉じる
+  void hideTaxModal() {
+    _showTaxModal = false;
+    notifyListeners();
+  }
+
+  // 購入処理（API または モック処理を使用）
   Future<void> purchase() async {
     if (_purchaseList.isEmpty) {
       _setPurchaseError('購入する商品がありません');
@@ -122,16 +157,29 @@ class PosProvider extends ChangeNotifier {
 
     _setPurchasing(true);
     _clearPurchaseMessages();
+    hideTaxModal(); // 処理開始時にモーダルを閉じる
 
     try {
       final transaction = Transaction.fromPurchaseItems(items: _purchaseList);
       
-      // TODO: 実際のAPI呼び出しに置き換え
-      await Future.delayed(const Duration(milliseconds: 1000)); // 模擬的な遅延
-      
-      // 成功処理
-      _setPurchaseSuccess('購入が完了しました。合計金額: ¥${transaction.totalAmount}');
-      _clearPurchaseList();
+      if (_useApi) {
+        // API経由で購入処理
+        final response = await _apiService.purchase(transaction);
+        
+        if (response.success) {
+          _setPurchaseSuccess('購入が完了しました。合計金額: ¥${response.totalAmount}');
+          _clearPurchaseList();
+        } else {
+          _setPurchaseError(response.message);
+        }
+      } else {
+        // モック処理
+        await Future.delayed(const Duration(milliseconds: 1000)); // 模擬的な遅延
+        _setPurchaseSuccess('購入が完了しました。合計金額: ¥${transaction.totalAmount}');
+        _clearPurchaseList();
+      }
+    } on ApiException catch (e) {
+      _setPurchaseError(e.message);
     } catch (e) {
       _setPurchaseError('購入処理でエラーが発生しました: ${e.toString()}');
     } finally {
@@ -152,6 +200,40 @@ class PosProvider extends ChangeNotifier {
     _purchaseList.clear();
     _clearAllMessages();
     notifyListeners();
+  }
+  
+  // API使用の切り替え
+  void toggleApiUsage() {
+    _useApi = !_useApi;
+    notifyListeners();
+  }
+  
+  // API使用の設定
+  void setApiUsage(bool useApi) {
+    _useApi = useApi;
+    notifyListeners();
+  }
+  
+  // APIベースURLの設定
+  Future<void> setApiBaseUrl(String url) async {
+    await _apiService.setBaseUrl(url);
+    notifyListeners();
+  }
+  
+  // API接続確認
+  Future<bool> checkApiConnection() async {
+    try {
+      return await _apiService.checkConnection();
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  // リソースの解放
+  @override
+  void dispose() {
+    _apiService.dispose();
+    super.dispose();
   }
 
   // Private methods

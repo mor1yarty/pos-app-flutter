@@ -3,18 +3,62 @@ import 'package:provider/provider.dart';
 import '../providers/pos_provider.dart';
 import '../widgets/product_search_widget.dart';
 import '../widgets/purchase_list_widget.dart';
+import '../widgets/tax_modal_widget.dart';
 import '../utils/constants.dart';
+import 'settings_screen.dart';
 
 class PosScreen extends StatelessWidget {
   const PosScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    return Consumer<PosProvider>(
+      builder: (context, provider, child) {
+        return Stack(
+          children: [
+            _buildMainContent(context),
+            
+            // 税金表示モーダル
+            if (provider.showTaxModal)
+              TaxModalWidget(
+                totalAmount: provider.totalAmount,
+                onContinue: () {
+                  provider.purchase();
+                },
+                onClose: () {
+                  provider.hideTaxModal();
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMainContent(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('POS システム'),
         centerTitle: true,
         actions: [
+          Consumer<PosProvider>(
+            builder: (context, provider, child) {
+              return IconButton(
+                icon: Icon(
+                  provider.useApi ? Icons.cloud : Icons.storage,
+                  color: provider.useApi ? Colors.white : Colors.orange,
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                },
+                tooltip: provider.useApi ? 'API接続中' : 'モック使用中',
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -87,7 +131,7 @@ class PosScreen extends StatelessWidget {
                         child: ElevatedButton(
                           onPressed: provider.purchaseList.isEmpty || provider.isPurchasing
                               ? null
-                              : () => provider.purchase(),
+                              : () => provider.showTaxModalDialog(),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppConstants.primaryColor,
                             foregroundColor: Colors.white,
@@ -109,7 +153,7 @@ class PosScreen extends StatelessWidget {
                                   ],
                                 )
                               : Text(
-                                  '購入 (${provider.purchaseItemCount}件)',
+                                  '購入確認 (${provider.purchaseItemCount}件)',
                                   style: AppConstants.bodyStyle.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
