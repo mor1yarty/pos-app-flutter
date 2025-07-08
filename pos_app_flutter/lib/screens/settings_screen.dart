@@ -181,11 +181,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           Row(
                             children: [
                               Expanded(
+                                flex: 2,
                                 child: ElevatedButton.icon(
                                   onPressed: _isTestingConnection ? null : _testConnection,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppConstants.primaryColor,
                                     foregroundColor: Colors.white,
+                                    minimumSize: const Size(100, 40),
                                   ),
                                   icon: _isTestingConnection
                                       ? const SizedBox(
@@ -201,19 +203,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               const SizedBox(width: AppConstants.defaultMargin),
-                              ElevatedButton(
-                                onPressed: () async {
-                                  await provider.setApiBaseUrl(_urlController.text);
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('API URLを保存しました'),
-                                        backgroundColor: AppConstants.successColor,
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: const Text('保存'),
+                              Expanded(
+                                flex: 1,
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    await provider.setApiBaseUrl(_urlController.text);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('API URLを保存しました'),
+                                          backgroundColor: AppConstants.successColor,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    minimumSize: const Size(60, 40),
+                                  ),
+                                  child: const Text('保存'),
+                                ),
                               ),
                             ],
                           ),

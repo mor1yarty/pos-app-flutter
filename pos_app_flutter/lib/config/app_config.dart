@@ -3,7 +3,7 @@ class AppConfig {
   static const String version = '1.0.0';
   
   // API設定
-  static const String defaultApiBaseUrl = 'http://localhost:8000';
+  static const String defaultApiBaseUrl = 'http://10.0.2.2:8000';
   
   // デフォルト値
   static const String defaultEmployeeCode = '9999999999';

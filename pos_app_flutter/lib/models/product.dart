@@ -14,9 +14,9 @@ class Product {
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
       productId: json['product_id'] as int,
-      code: json['code'] as String,
-      name: json['name'] as String,
-      price: json['price'] as int,
+      code: json['product_code'] as String,
+      name: json['product_name'] as String,
+      price: json['product_price'] as int,
     );
   }
 
