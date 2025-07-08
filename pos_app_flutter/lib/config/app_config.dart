@@ -20,7 +20,11 @@ class AppConfig {
   // カメラ設定（将来のバーコードスキャン用）
   static const Duration cameraTimeout = Duration(seconds: 30);
   
+  // APIキー設定
+  static const String defaultApiKey = 'pos-flutter-app-2024-secure-key';
+  
   // ローカルストレージキー
   static const String keyApiBaseUrl = 'api_base_url';
   static const String keyEmployeeCode = 'employee_code';
+  static const String keyApiKey = 'api_key';
 }

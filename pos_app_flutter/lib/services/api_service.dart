@@ -7,26 +7,38 @@ import '../config/app_config.dart';
 
 class ApiService {
   static const String _baseUrlKey = AppConfig.keyApiBaseUrl;
+  static const String _apiKeyKey = AppConfig.keyApiKey;
   
   late String _baseUrl;
+  late String _apiKey;
   final http.Client _client = http.Client();
   
   ApiService() {
     _baseUrl = AppConfig.defaultApiBaseUrl;
-    _loadBaseUrl();
+    _apiKey = AppConfig.defaultApiKey;
+    _loadSettings();
   }
 
-  // ベースURLをSharedPreferencesから読み込み
-  Future<void> _loadBaseUrl() async {
+  // 設定をSharedPreferencesから読み込み
+  Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      
+      // ベースURL読み込み
       final savedUrl = prefs.getString(_baseUrlKey);
       if (savedUrl != null && savedUrl.isNotEmpty) {
         _baseUrl = savedUrl;
       }
+      
+      // APIキー読み込み
+      final savedApiKey = prefs.getString(_apiKeyKey);
+      if (savedApiKey != null && savedApiKey.isNotEmpty) {
+        _apiKey = savedApiKey;
+      }
     } catch (e) {
-      // SharedPreferencesでエラーが発生した場合はデフォルトURLを使用
+      // SharedPreferencesでエラーが発生した場合はデフォルト値を使用
       _baseUrl = AppConfig.defaultApiBaseUrl;
+      _apiKey = AppConfig.defaultApiKey;
     }
   }
 
@@ -43,6 +55,20 @@ class ApiService {
 
   // 現在のベースURLを取得
   String get baseUrl => _baseUrl;
+  
+  // APIキーを設定・保存
+  Future<void> setApiKey(String apiKey) async {
+    _apiKey = apiKey;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_apiKeyKey, apiKey);
+    } catch (e) {
+      // 保存に失敗してもメモリ上のAPIキーは更新されているので続行
+    }
+  }
+  
+  // 現在のAPIキーを取得
+  String get apiKey => _apiKey;
 
   // 商品検索API
   Future<Product?> searchProduct(String code) async {
@@ -53,6 +79,7 @@ class ApiService {
         url,
         headers: {
           'Content-Type': 'application/json',
+          'X-API-Key': _apiKey,
         },
       ).timeout(AppConfig.networkTimeout);
 
@@ -62,6 +89,11 @@ class ApiService {
       } else if (response.statusCode == 404) {
         // 商品が見つからない場合
         return null;
+      } else if (response.statusCode == 401) {
+        throw ApiException(
+          statusCode: response.statusCode,
+          message: 'API認証に失敗しました。APIキーを確認してください。',
+        );
       } else {
         throw ApiException(
           statusCode: response.statusCode,
@@ -93,6 +125,7 @@ class ApiService {
         url,
         headers: {
           'Content-Type': 'application/json',
+          'X-API-Key': _apiKey,
         },
         body: jsonEncode(transaction.toJson()),
       ).timeout(AppConfig.networkTimeout);
@@ -103,7 +136,9 @@ class ApiService {
       } else {
         final errorMessage = response.statusCode == 400
             ? '購入データに問題があります'
-            : 'HTTP ${response.statusCode}: ${response.reasonPhrase}';
+            : response.statusCode == 401
+                ? 'API認証に失敗しました。APIキーを確認してください。'
+                : 'HTTP ${response.statusCode}: ${response.reasonPhrase}';
         
         throw ApiException(
           statusCode: response.statusCode,
@@ -135,6 +170,7 @@ class ApiService {
         url,
         headers: {
           'Content-Type': 'application/json',
+          'X-API-Key': _apiKey,
         },
       ).timeout(const Duration(seconds: 10));
 
