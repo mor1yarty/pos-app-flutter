@@ -45,5 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- カメラ権限 -->
+	<key>NSCameraUsageDescription</key>
+	<string>商品のバーコードをスキャンするためにカメラを使用します</string>
 </dict>
 </plist>
